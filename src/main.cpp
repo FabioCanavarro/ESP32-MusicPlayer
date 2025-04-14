@@ -1,5 +1,11 @@
 #include <Arduino.h>
 #include <U8g2lib.h>
+#include <WiFiManager.h>
+#include <ArduinoJson.h>
+#include <HTTPClient.h>
+#include <WiFiClient.h>
+#include <WebServer.h>
+#include <WiFi.h>
 
 #ifdef U8X8_HAVE_HW_SPI
 #include <SPI.h>
@@ -430,11 +436,11 @@ static const unsigned char frame5[] U8X8_PROGMEM  =  {
 
 
 void setup(void) {
-  u8g2.begin();
-}
+  Serial.begin(115200);
+  delay(1000);
 
-void loop(void) {
-  // picture loop  
+
+  u8g2.begin();
   u8g2.clearBuffer();
   u8g2_prepare();
   u8g2.drawXBMP(0, 0, 128, 64, frame);
@@ -469,4 +475,11 @@ void loop(void) {
   u8g2_prepare();
   u8g2.drawXBMP(0, 0, 128, 64, frame5);
   u8g2.sendBuffer();
+}
+
+void loop(void) {
+  WifiManager wm;
+
+  
+
 }

@@ -2,10 +2,10 @@
 #include <U8g2lib.h>
 #include <WiFiManager.h>
 #include <ArduinoJson.h>
-#include <HTTPClient.h>
 #include <WiFiClient.h>
 #include <WebServer.h>
 #include <WiFi.h>
+#include <HTTPClient.h>
 
 #ifdef U8X8_HAVE_HW_SPI
 #include <SPI.h>
@@ -18,17 +18,11 @@
 
 
 
-void u8g2_prepare(void) {
-  u8g2.setFont(u8g2_font_6x10_tf);
-  u8g2.setFontRefHeightExtendedText();
-  u8g2.setDrawColor(1);
-  u8g2.setFontPosTop();
-  u8g2.setFontDirection(0);
-}
 
 
-#define cross_width 16
-#define cross_height 64
+const String HOSTNAME = "https://ai.hackclub.com/chat/completions";
+
+
 static const unsigned char frame[] U8X8_PROGMEM  = {
   0x00, 0x7f, 0x00, 0x00, 0x00, 0x00, 0x90, 0x5a, 0x55, 0x69, 0xdb, 0xf7, 0x00, 0x00, 0x00, 0x00, 
   0xfe, 0x7f, 0x00, 0x00, 0x00, 0x00, 0x48, 0xe9, 0xff, 0xff, 0xff, 0xfe, 0x01, 0x00, 0x00, 0x00, 
@@ -434,10 +428,32 @@ static const unsigned char frame5[] U8X8_PROGMEM  =  {
   0xfe, 0x7f, 0x00, 0x00, 0x00, 0xd8, 0x6d, 0xb0, 0xff, 0x1d, 0x00, 0x07, 0x00, 0x00, 0x04, 0x14
 };
 
+void setupWifi() {
+  WiFiManager wm;
+  bool res;
+  res = wm.autoConnect("MusicPlayerthingy","MP3");
+
+  if(!res) {
+      Serial.println("Failed to connect");
+      ESP.restart();
+  } 
+  else {
+      Serial.println("connected...yeey :)");
+  }
+}
+
+void u8g2_prepare(void) {
+  u8g2.setFont(u8g2_font_6x10_tf);
+  u8g2.setFontRefHeightExtendedText();
+  u8g2.setDrawColor(1);
+  u8g2.setFontPosTop();
+  u8g2.setFontDirection(0);
+}
 
 void setup(void) {
   Serial.begin(115200);
-  delay(1000);
+
+  delay(500);
 
 
   u8g2.begin();
@@ -477,9 +493,37 @@ void setup(void) {
   u8g2.sendBuffer();
 }
 
+
+
+
 void loop(void) {
-  WifiManager wm;
+  if (!WiFi.isConnected()) {
+    Serial.println("WiFi disconnected, reconnecting...");
+    setupWifi();
+    u8g2.clearBuffer();
+    u8g2_prepare();
+    u8g2.drawStr(0, 0, "WiFi connecting");
+    u8g2.sendBuffer();
+    delay(100);
+    u8g2.clearBuffer();
+    u8g2_prepare();
+    u8g2.drawStr(0, 0, "WiFi connecting.");
+    u8g2.sendBuffer();
+    delay(100);
+    u8g2.clearBuffer();
+    u8g2_prepare();
+    u8g2.drawStr(0, 0, "WiFi connecting..");
+    u8g2.sendBuffer();
+    delay(100);
+    u8g2.clearBuffer();
+    u8g2_prepare();
+    u8g2.drawStr(0, 0, "WiFi connecting...");
+    u8g2.sendBuffer();
+  }
+  HTTPClient http;
+  http.begin(HOSTNAME);
 
   
+
 
 }

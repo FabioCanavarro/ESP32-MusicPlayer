@@ -7,6 +7,11 @@
 #include <WiFi.h>
 #include <HTTPClient.h>
 #include <WiFiClientSecure.h>
+#include <BluetoothSerial.h>
+
+#if !defined(CONFIG_BT_ENABLED) || !defined(CONFIG_BLUEDROID_ENABLED)
+#error Bluetooth is not enabled! Please run `make menuconfig` to and enable it
+#endif
 
 #ifdef U8X8_HAVE_HW_SPI
 #include <SPI.h>
@@ -449,11 +454,8 @@ void u8g2_prepare(void) {
   u8g2.setFontDirection(0);
 }
 
-void setup(void) {
-  Serial.begin(115200);
-
+void setup_animation(){
   delay(500);
-
 
   u8g2.begin();
   u8g2.clearBuffer();
@@ -492,19 +494,9 @@ void setup(void) {
   u8g2.sendBuffer();
 }
 
-WiFiClientSecure client;
-
-
-void loop(void) {
-  // --- WiFi Reconnection Logic (same as before) ---
-  if (!WiFi.isConnected()) {
-    Serial.println("WiFi disconnected, reconnecting...");
-    setupWifi(); // Attempt to reconnect
-    
-
-    // Display connecting status on screen
+void wifi_connecting_animation(){
     u8g2.clearBuffer();
-    u8g2_prepare(); // Prepare font/drawing settings
+    u8g2_prepare();
     u8g2.drawStr(0, 0, "WiFi connecting");
     u8g2.sendBuffer();
     delay(100);
@@ -522,7 +514,32 @@ void loop(void) {
     u8g2_prepare();
     u8g2.drawStr(0, 0, "WiFi connecting...");
     u8g2.sendBuffer();
-    delay(1000); // Wait a bit longer after attempting connection
+    delay(1000);
+}
+
+
+
+
+
+
+
+
+void setup(void) {
+  Serial.begin(115200);
+  setup_animation(); // Call the setup animation function
+}
+
+WiFiClientSecure client;
+
+
+void loop(void) {
+  // --- WiFi Reconnection Logic (same as before) ---
+  if (!WiFi.isConnected()) {
+    Serial.println("WiFi disconnected, reconnecting...");
+    setupWifi(); // Attempt to reconnect
+    
+    wifi_connecting_animation();
+
 
     // Check again if connection succeeded before proceeding
     if (!WiFi.isConnected()) {

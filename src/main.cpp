@@ -23,6 +23,8 @@
 U8G2_ST7920_128X64_F_SW_SPI u8g2(U8G2_R0, /* clock=*/ 18, /* data=*/ 23, /* CS=*/ 5, /* reset=*/ 22); // ESP32
 
 
+WiFiClientSecure client;
+
 static const unsigned char frame[] U8X8_PROGMEM  = {
   0x00, 0x7f, 0x00, 0x00, 0x00, 0x00, 0x90, 0x5a, 0x55, 0x69, 0xdb, 0xf7, 0x00, 0x00, 0x00, 0x00, 
   0xfe, 0x7f, 0x00, 0x00, 0x00, 0x00, 0x48, 0xe9, 0xff, 0xff, 0xff, 0xfe, 0x01, 0x00, 0x00, 0x00, 
@@ -517,29 +519,13 @@ void wifi_connecting_animation(){
     delay(1000);
 }
 
-
-
-
-
-
-
-
-void setup(void) {
-  Serial.begin(115200);
-  setup_animation(); // Call the setup animation function
-}
-
-WiFiClientSecure client;
-
-
-void loop(void) {
-  // --- WiFi Reconnection Logic (same as before) ---
+void connect_to_wifi(){
   if (!WiFi.isConnected()) {
     Serial.println("WiFi disconnected, reconnecting...");
-    setupWifi(); // Attempt to reconnect
+
+    setupWifi();
     
     wifi_connecting_animation();
-
 
     // Check again if connection succeeded before proceeding
     if (!WiFi.isConnected()) {
@@ -562,8 +548,130 @@ void loop(void) {
     }
   }
 
-  // --- HTTPS POST Request Logic ---
-  client.setInsecure(); // Allow insecure connections (use with caution)
+  //! Setting client to insecure mode for testing purposes. In production, consider using secure connections.
+  client.setInsecure();
+}
+
+void connect_to_server(){
+  const char* jsonPayload = "{\"messages\": [{\"role\": \"user\", \"content\": \"Tell me a joke!\"}]}";
+  int jsonPayloadLength = strlen(jsonPayload); // Calculate the length of the payload
+
+  client.println("POST /chat/completions HTTP/1.1"); // Use POST and HTTP/1.1
+
+  client.print("Host: "); // Use client.print for header name
+  client.println(HOSTNAME); // Use client.println for header value (adds \r\n)
+
+  client.println("Content-Type: application/json"); // Specify JSON content
+
+  client.print("Content-Length: "); // Specify the length of the body
+  client.println(jsonPayloadLength); // The calculated length
+
+  client.println("Connection: close"); // Close connection after response
+
+  client.println();
+
+  client.print(jsonPayload); // Use client.print to send the body data without extra newline
+
+  Serial.println("Request sent. Waiting for response...");
+
+  u8g2.clearBuffer();
+  u8g2_prepare();
+  u8g2.drawStr(0, 0, "Request Sent");
+  u8g2.sendBuffer();
+
+  // Wait for the server to respond or timeout
+  unsigned long timeout = millis();
+  while (!client.available() && millis() - timeout < 5000) {
+    // Todo: Add Animations or a loading indicator
+    // Wait for 5 seconds for data to become available
+    delay(10);
+  }
+
+  // Check if data is available
+  if (!client.available()) {
+      Serial.println("No response received from server or timeout.");
+      client.stop(); // Clean up the connection
+      // Optionally update display
+      u8g2.clearBuffer();
+      u8g2_prepare();
+      u8g2.drawStr(0, 0, "No Response");
+      u8g2.sendBuffer();
+      delay(2000);
+      return; // Exit this loop iteration
+  }
+
+  Serial.println("Receiving response:");
+  // Read the response headers (optional, but good for debugging)
+  while (client.connected()) {
+    String line = client.readStringUntil('\n');
+    Serial.print("."); // Print dots while reading headers
+    if (line == "\r") {
+      Serial.println("\nHeaders received.");
+      break; // Found the empty line after headers
+    }
+    // Serial.println(line);
+  }
+
+  Serial.println("Reading response body:");
+  // Read the response body
+  // Consider using a JSON parsing library (like ArduinoJson) here
+  // for more robust handling instead of just printing characters.
+  u8g2.clearBuffer();
+  u8g2_prepare();
+  u8g2.setCursor(0, 0); // Set cursor for display
+  u8g2.print("Response:");
+  int lineNum = 1; // Track line number for display
+
+  while (client.available()) {
+    char c = client.read();
+    Serial.write(c); // Print character to Serial Monitor
+
+    // TODO: Add logic here to handle longer responses if needed (scrolling, etc.)
+    // Basic display logic (might overflow screen quickly)
+    if (c == '\n') {
+        lineNum++;
+        u8g2.setCursor(0, u8g2.getAscent() * lineNum); // Move to next line on display
+    } else if (u8g2.getCursorX() < u8g2.getDisplayWidth()) {
+        u8g2.print(c); // Print character to display if it fits
+    }
+
+  }
+  u8g2.sendBuffer(); // Update the display with the received content
+
+  client.stop(); // Close the connection
+  Serial.println("\nConnection closed.");
+
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+void setup(void) {
+  Serial.begin(115200);
+  setup_animation(); // Call the setup animation function
+}
+
+void loop(void) {
+
+  // wifi setup logic
+  connect_to_wifi();
 
   Serial.println("\nStarting connection to server for POST...");
 
@@ -577,107 +685,17 @@ void loop(void) {
     delay(2000);
   } else {
     Serial.println("Connected to server!");
-    // Optionally display connection success message
+
     u8g2.clearBuffer();
     u8g2_prepare();
     u8g2.drawStr(0, 0, "Server Connected!");
     u8g2.sendBuffer();
     delay(1000);
 
-
-    const char* jsonPayload = "{\"messages\": [{\"role\": \"user\", \"content\": \"Tell me a joke!\"}]}";
-    int jsonPayloadLength = strlen(jsonPayload); // Calculate the length of the payload
-
-    client.println("POST /chat/completions HTTP/1.1"); // Use POST and HTTP/1.1
-
-    // 2. Headers
-    client.print("Host: "); // Use client.print for header name
-    client.println(HOSTNAME); // Use client.println for header value (adds \r\n)
-
-    client.println("Content-Type: application/json"); // Specify JSON content
-
-    client.print("Content-Length: "); // Specify the length of the body
-    client.println(jsonPayloadLength); // The calculated length
-
-    client.println("Connection: close"); // Close connection after response
-
-    client.println();
-
-    // 4. Request Body (the JSON payload)
-    client.print(jsonPayload); // Use client.print to send the body data without extra newline
-
-    Serial.println("Request sent. Waiting for response...");
-    // Optionally update display
-    u8g2.clearBuffer();
-    u8g2_prepare();
-    u8g2.drawStr(0, 0, "Request Sent");
-    u8g2.sendBuffer();
+    connect_to_server();
 
 
-    // --- Response Handling (similar to before, but might need adjustments based on actual API response) ---
-
-    // Wait for the server to respond or timeout
-    unsigned long timeout = millis();
-    while (!client.available() && millis() - timeout < 5000) {
-      // Wait for 5 seconds for data to become available
-      delay(10);
-    }
-
-    // Check if data is available
-    if (!client.available()) {
-        Serial.println("No response received from server or timeout.");
-        client.stop(); // Clean up the connection
-        // Optionally update display
-        u8g2.clearBuffer();
-        u8g2_prepare();
-        u8g2.drawStr(0, 0, "No Response");
-        u8g2.sendBuffer();
-        delay(2000);
-        return; // Exit this loop iteration
-    }
-
-    Serial.println("Receiving response:");
-    // Read the response headers (optional, but good for debugging)
-    while (client.connected()) {
-      String line = client.readStringUntil('\n');
-      Serial.print("."); // Print dots while reading headers
-      if (line == "\r") {
-        Serial.println("\nHeaders received.");
-        break; // Found the empty line after headers
-      }
-      // You could print or parse headers here if needed
-      // Serial.println(line);
-    }
-
-    Serial.println("Reading response body:");
-    // Read the response body
-    // Consider using a JSON parsing library (like ArduinoJson) here
-    // for more robust handling instead of just printing characters.
-    u8g2.clearBuffer();
-    u8g2_prepare();
-    u8g2.setCursor(0, 0); // Set cursor for display
-    u8g2.print("Response:");
-    int lineNum = 1; // Track line number for display
-
-    while (client.available()) {
-      char c = client.read();
-      Serial.write(c); // Print character to Serial Monitor
-
-      // Basic display logic (might overflow screen quickly)
-      if (c == '\n') {
-          lineNum++;
-          u8g2.setCursor(0, u8g2.getAscent() * lineNum); // Move to next line on display
-      } else if (u8g2.getCursorX() < u8g2.getDisplayWidth()) {
-          u8g2.print(c); // Print character to display if it fits
-      }
-      // Add logic here to handle longer responses if needed (scrolling, etc.)
-    }
-    u8g2.sendBuffer(); // Update the display with the received content
-
-    client.stop(); // Close the connection
-    Serial.println("\nConnection closed.");
-
-  } // End of else (client.connect successful)
+  }
 
   // Add a delay at the end of the loop to prevent spamming requests
   Serial.println("Waiting before next request...");

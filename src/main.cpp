@@ -552,7 +552,7 @@ void connect_to_wifi(){
   client.setInsecure();
 }
 
-void connect_to_server(){
+void serverConnectedLogic(){
   const char* jsonPayload = "{\"messages\": [{\"role\": \"user\", \"content\": \"Tell me a joke!\"}]}";
   int jsonPayloadLength = strlen(jsonPayload); // Calculate the length of the payload
 
@@ -640,38 +640,9 @@ void connect_to_server(){
 
   client.stop(); // Close the connection
   Serial.println("\nConnection closed.");
-
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-void setup(void) {
-  Serial.begin(115200);
-  setup_animation(); // Call the setup animation function
-}
-
-void loop(void) {
-
-  // wifi setup logic
-  connect_to_wifi();
+void connect_to_server(){
 
   Serial.println("\nStarting connection to server for POST...");
 
@@ -683,7 +654,8 @@ void loop(void) {
     u8g2.drawStr(0, 10, HOSTNAME);
     u8g2.sendBuffer();
     delay(2000);
-  } else {
+  }
+  else {
     Serial.println("Connected to server!");
 
     u8g2.clearBuffer();
@@ -692,13 +664,24 @@ void loop(void) {
     u8g2.sendBuffer();
     delay(1000);
 
-    connect_to_server();
-
-
+    serverConnectedLogic();
   }
+}
+
+void setup(void) {
+  Serial.begin(115200);
+  setup_animation();
+}
+
+void loop(void) {
+
+  // wifi setup logic
+  connect_to_wifi();
+
+  // wifi connection logic
+  serverConnectedLogic();
 
   // Add a delay at the end of the loop to prevent spamming requests
   Serial.println("Waiting before next request...");
   delay(10000); // Wait 10 seconds before the next loop iteration
-
 }

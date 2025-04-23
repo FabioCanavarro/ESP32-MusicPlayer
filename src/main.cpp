@@ -1,11 +1,7 @@
 #include <Arduino.h>
 #include <U8g2lib.h>
 #include <WiFiManager.h>
-#include <ArduinoJson.h>
-#include <WiFiClient.h>
-#include <WebServer.h>
 #include <WiFi.h>
-#include <HTTPClient.h>
 #include <WiFiClientSecure.h>
 #include <BluetoothSerial.h>
 
@@ -265,5 +261,4 @@ void loop(void) {
   // delay(10000); // Wait 10 seconds before the next loop iteration
   delay(100);
 }
-
 // Todo Refactor to multiple files
